@@ -20,7 +20,6 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.indigo,
       ),
       routes: mapRoutes,
-      //todo home
     );
   }
 }

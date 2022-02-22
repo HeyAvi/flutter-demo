@@ -1,4 +1,5 @@
 import 'package:demo/pages/user_details/user_details_page.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/svg.dart';
@@ -15,6 +16,9 @@ class OtpPage extends StatefulWidget {
 }
 
 class _OtpPageState extends State<OtpPage> {
+  String otp = '';
+  String? otpError;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -58,12 +62,15 @@ class _OtpPageState extends State<OtpPage> {
                             FilteringTextInputFormatter.digitsOnly
                           ],
                           onChanged: (val) {
-                            setState(() {});
+                            setState(() {
+                              otp = val;
+                            });
                           },
                           maxLength: 6,
                           style: const TextStyle(fontWeight: FontWeight.bold),
                           textAlign: TextAlign.center,
                           decoration: InputDecoration(
+                              errorText: otpError,
                               prefixIcon: const Icon(Icons.fact_check_rounded),
                               label: const Text(
                                 'One Time Password',
@@ -91,17 +98,25 @@ class _OtpPageState extends State<OtpPage> {
                               radius: 25,
                               child: IconButton(
                                   iconSize: 25,
-                                  onPressed: () {
+                                  onPressed: () async {
                                     // todo verify verification
-                                    // Navigator.pushNamedAndRemoveUntil(
-                                    //     context, '/home', (route) => false);
-                                    Navigator.pushAndRemoveUntil(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (builder) =>
-                                              const UserDetailsUpdate(),
-                                        ),
-                                        (route) => false);
+                                    setState(() {
+                                      otpError = null;
+                                    });
+                                    try {
+                                      PhoneAuthCredential credential =
+                                          PhoneAuthProvider.credential(
+                                              verificationId: widget.vid,
+                                              smsCode: otp);
+                                      await FirebaseAuth.instance
+                                          .signInWithCredential(credential);
+                                      Navigator.pushNamedAndRemoveUntil(
+                                          context, '/home', (route) => false);
+                                    } on FirebaseAuthException catch (e) {
+                                      setState(() {
+                                        otpError = e.code;
+                                      });
+                                    }
                                   },
                                   icon:
                                       const Icon(Icons.navigate_next_outlined)),

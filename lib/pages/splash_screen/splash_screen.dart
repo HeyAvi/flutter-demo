@@ -18,8 +18,9 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
-      body: AppLogo(fontSize: 100,)
-    );
+        body: AppLogo(
+      fontSize: 100,
+    ));
   }
 
   Future<void> navigate() async {

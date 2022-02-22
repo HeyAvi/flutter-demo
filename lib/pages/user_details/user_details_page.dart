@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:demo/models/user_model.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
@@ -47,8 +48,8 @@ class _UserDetailsUpdateState extends State<UserDetailsUpdate> {
         );
       });
       Reference reference = FirebaseStorage.instance
-          .ref('users')
-          .child('hhhhhh');
+          .ref('Users')
+          .child(FirebaseAuth.instance.currentUser!.uid);
       try {
         await reference.putFile(File(_file!.path));
         Navigator.pop(dialogContext);
@@ -71,14 +72,39 @@ class _UserDetailsUpdateState extends State<UserDetailsUpdate> {
   }
 
   void submitData() async {
-    try {
-      photoUrl = await _uploadImageGetUrl();
+    setState(() {
+      locationError = null;
+      nameError = null;
+      emailError = null;
+    });
+    if (nameController.text.isEmpty) {
       setState(() {
-        _file = null;
-        print('$photoUrl --------------<<<<<----------------------');
+        nameError = 'Please enter your name*';
       });
-    } catch (e) {
-      print(e);
+    } else if (emailController.text.isEmpty) {
+      emailError = 'Enter your email*';
+    } else if (locationController.text.isEmpty) {
+      locationError = 'Enter your location*';
+    } else {
+      try {
+        photoUrl = await _uploadImageGetUrl();
+        setState(() {
+          _file = null;
+        });
+        UserModel.updateInDB(
+          userModel: UserModel(
+            name: nameController.text,
+            location: locationController.text,
+            email: emailController.text,
+            photoUrl: photoUrl,
+          ),
+        );
+        await FirebaseAuth.instance.currentUser!
+            .updateDisplayName(nameController.text);
+        Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+      } catch (e) {
+        print(e);
+      }
     }
   }
 
@@ -153,14 +179,17 @@ class _UserDetailsUpdateState extends State<UserDetailsUpdate> {
                             width: 200,
                           ),
                     textWidget(
+                      errorText: nameError,
                         textEditingController: nameController,
                         labelText: 'Name',
                         helperText: 'Enter your name here'),
                     textWidget(
+                      errorText: emailError,
                         textEditingController: emailController,
                         labelText: 'Email',
                         helperText: 'Enter your email here'),
                     textWidget(
+                      errorText: locationError,
                       textEditingController: locationController,
                       labelText: 'Location',
                       helperText:

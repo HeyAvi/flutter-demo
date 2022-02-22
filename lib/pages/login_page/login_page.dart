@@ -1,5 +1,6 @@
 import 'package:demo/pages/login_page/otp_page.dart';
 import 'package:demo/pages/splash_screen/app_logo.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -112,7 +113,7 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  void submit(String? text) {
+  void submit(String? text) async {
     setState(() {
       errorText = null;
     });
@@ -121,18 +122,27 @@ class _LoginPageState extends State<LoginPage> {
         errorText = 'Please enter a phone number';
       });
     } else {
-      //todo perform login send verification
-      setState(() {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (builder) => OtpPage(
-              phone: '+$phone',
-              vid: 'vid!',
-            ),
-          ),
-        );
-      });
+      await FirebaseAuth.instance.verifyPhoneNumber(
+        phoneNumber: '+$phone',
+        verificationCompleted: (PhoneAuthCredential credential) {},
+        verificationFailed: (FirebaseAuthException e) {
+          setState(() {
+            errorText = e.code;
+          });
+        },
+        timeout: const Duration(seconds: 5),
+        codeSent: (String verificationId, int? resendToken) {
+          setState(() {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (builder) =>
+                      OtpPage(phone: '+$phone', vid: verificationId)),
+            );
+          });
+        },
+        codeAutoRetrievalTimeout: (String verificationId) {},
+      );
     }
   }
 }
