@@ -264,4 +264,13 @@ class _UserDetailsUpdateState extends State<UserDetailsUpdate> {
       await getLocation();
     }
   }
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    emailController.dispose();
+    locationController.dispose();
+    super.dispose();
+  }
+
 }

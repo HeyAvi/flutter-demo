@@ -1,3 +1,4 @@
+import 'package:alt_sms_autofill/alt_sms_autofill.dart';
 import 'package:demo/pages/user_details/user_details_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -16,8 +17,48 @@ class OtpPage extends StatefulWidget {
 }
 
 class _OtpPageState extends State<OtpPage> {
-  String otp = '';
   String? otpError;
+
+  TextEditingController textEditingController = TextEditingController();
+
+  String? _otpListened;
+
+  Future<void> otpListener() async {
+    String? otpListened;
+    try {
+      otpListened = await AltSmsAutofill().listenForSms;
+      textEditingController.clear();
+    } on PlatformException {
+      otpListened = 'Failed to get Sms.';
+    }
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (!mounted) return;
+      setState(() {
+        _otpListened = otpListened;
+        print("====>Message: $_otpListened");
+        print(_otpListened![0]);
+        textEditingController.text = _otpListened![0] +
+            _otpListened![1] +
+            _otpListened![2] +
+            _otpListened![3] +
+            _otpListened![4] +
+            _otpListened![5];
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    textEditingController.dispose();
+    AltSmsAutofill().unregisterListener();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    otpListener();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -62,11 +103,19 @@ class _OtpPageState extends State<OtpPage> {
                             FilteringTextInputFormatter.digitsOnly
                           ],
                           onChanged: (val) {
+                            if (val.length == 6) {
+                              setState(() {
+                                submit();
+                              });
+                            }
+                          },
+                          onSubmitted: (v) {
                             setState(() {
-                              otp = val;
+                              submit();
                             });
                           },
                           maxLength: 6,
+                          controller: textEditingController,
                           style: const TextStyle(fontWeight: FontWeight.bold),
                           textAlign: TextAlign.center,
                           decoration: InputDecoration(
@@ -98,26 +147,7 @@ class _OtpPageState extends State<OtpPage> {
                               radius: 25,
                               child: IconButton(
                                   iconSize: 25,
-                                  onPressed: () async {
-                                    // todo verify verification
-                                    setState(() {
-                                      otpError = null;
-                                    });
-                                    try {
-                                      PhoneAuthCredential credential =
-                                          PhoneAuthProvider.credential(
-                                              verificationId: widget.vid,
-                                              smsCode: otp);
-                                      await FirebaseAuth.instance
-                                          .signInWithCredential(credential);
-                                      Navigator.pushNamedAndRemoveUntil(
-                                          context, '/home', (route) => false);
-                                    } on FirebaseAuthException catch (e) {
-                                      setState(() {
-                                        otpError = e.code;
-                                      });
-                                    }
-                                  },
+                                  onPressed: submit,
                                   icon:
                                       const Icon(Icons.navigate_next_outlined)),
                             ),
@@ -133,5 +163,22 @@ class _OtpPageState extends State<OtpPage> {
         ),
       ),
     );
+  }
+
+  void submit() async {
+    // todo verify verification
+    setState(() {
+      otpError = null;
+    });
+    try {
+      PhoneAuthCredential credential = PhoneAuthProvider.credential(
+          verificationId: widget.vid, smsCode: textEditingController.text);
+      await FirebaseAuth.instance.signInWithCredential(credential);
+      Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+    } on FirebaseAuthException catch (e) {
+      setState(() {
+        otpError = e.code;
+      });
+    }
   }
 }
